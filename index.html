@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>💌</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #fceef2; font-family: 'Georgia', serif; }
+    canvas { display: block; }
+    
+    .letter-content {
+      color: #2c2c2c;
+      line-height: 1.8;
+      font-size: 1.1em;
+    }
+    
+    .letter-content h2 {
+      color: #8b0000;
+      margin-bottom: 20px;
+      font-size: 2em;
+      text-align: center;
+    }
+    
+    .letter-content p {
+      margin-bottom: 15px;
+      text-indent: 30px;
+    }
+    
+    .signature {
+      margin-top: 30px;
+      text-align: right;
+      font-style: italic;
+      color: #8b0000;
+      font-size: 1.3em;
+    }
+    
+    .close-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #8b0000;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.3s;
+    }
+    
+    .close-btn:hover {
+      background: #660000;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+
+<!-- <script>
+  const password = "111201"; // change this
+  const entered = prompt("Enter the password to view this page:");
+  if (entered !== password) {
+    document.body.innerHTML = "<h1 style='text-align:center;margin-top:40vh;'>Access Denied</h1>";
+    throw new Error("Incorrect password");
+  }
+</script> -->
+
+    <!-- <script>
+    const password = "111201"; // change this
+    const entered = prompt("Enter the password to view this page:");
+    if (entered !== password) {
+        document.body.innerHTML = "<h1 style='text-align:center;margin-top:40vh;'>Access Denied </h1>";
+    } else {
+        // Only load the 3D code if password is correct
+        const script = document.createElement("script");
+        script.type = "module";
+        script.src = "main.js"; // OR you can inline your big code below instead
+        document.body.appendChild(script);
+    }
+    </script> -->
+
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+    // ===== CONFIGURATION =====
+    const CONFIG = {
+      envelope: {
+        baseSize: { width: 3, height: 2, depth: 0.1 },
+        baseColor: 0xffc0cb,
+        flapColor: 0xff99b8
+      },
+      heart: {
+        color: 0xff0000,
+        position: { x: 0, y: 0.7, z: -0.01 }
+      },
+      letter: {
+        size: { width: 2.6, height: 1.6 },
+        color: 0xffffff
+      },
+      animation: {
+        flapOpenAngle: Math.PI / 3,
+        flapClosedAngle: Math.PI,
+        duration: 800
+      }
+    };
+
+    // ===== SCENE SETUP =====
+    function initScene() {
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xfceef2);
+
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(4, 2, 5);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.localClippingEnabled = true;
+      renderer.toneMapping = THREE.ReinhardToneMapping;
+      document.body.appendChild(renderer.domElement);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      
+      // Add bloom effect
+      const composer = new EffectComposer(renderer);
+      const renderPass = new RenderPass(scene, camera);
+      composer.addPass(renderPass);
+      
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        0.5, // strength
+        0.4, // radius
+        0.7 // threshold - lower so envelope glows but background doesn't
+      );
+      composer.addPass(bloomPass);
+
+      return { scene, camera, renderer, controls, composer, bloomPass };
+    }
+
+    // ===== LIGHTING =====
+    function setupLighting(scene) {
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 10, 7.5);
+      scene.add(directionalLight);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+    }
+
+    // ===== ENVELOPE CREATION =====
+    function createEnvelope(config) {
+      const baseGeometry = new THREE.BoxGeometry(
+        config.baseSize.width,
+        config.baseSize.height,
+        config.baseSize.depth
+      );
+      const baseMaterial = new THREE.MeshPhongMaterial({ color: config.baseColor });
+      const base = new THREE.Mesh(baseGeometry, baseMaterial);
+
+      return base;
+    }
+
+    // ===== FLAP CREATION =====
+    function createFlap(config) {
+      const flapShape = new THREE.Shape();
+      flapShape.moveTo(-1.5, 0);
+      flapShape.lineTo(0, 1);
+      flapShape.lineTo(1.5, 0);
+      flapShape.lineTo(-1.5, 0);
+
+      const flapGeometry = new THREE.ShapeGeometry(flapShape);
+      const flapMaterial = new THREE.MeshPhongMaterial({ 
+        color: config.envelope.flapColor, 
+        side: THREE.DoubleSide 
+      });
+      const flap = new THREE.Mesh(flapGeometry, flapMaterial);
+      flap.rotation.x = config.animation.flapClosedAngle;
+      flap.position.set(0, 1, 0.05);
+
+      return flap;
+    }
+
+    // ===== HEART SEAL CREATION =====
+    function createHeart(config) {
+      const heartShape = new THREE.Shape();
+      heartShape.moveTo(0, 0.25);
+      heartShape.bezierCurveTo(0, 0.25, 0, 0.15, 0, 0.15);
+      heartShape.bezierCurveTo(0, 0.05, -0.1, 0, -0.15, 0);
+      heartShape.bezierCurveTo(-0.25, 0, -0.25, 0.1, -0.25, 0.1);
+      heartShape.bezierCurveTo(-0.25, 0.2, -0.15, 0.3, 0, 0.4);
+      heartShape.bezierCurveTo(0.15, 0.3, 0.25, 0.2, 0.25, 0.1);
+      heartShape.bezierCurveTo(0.25, 0.1, 0.25, 0, 0.15, 0);
+      heartShape.bezierCurveTo(0.1, 0, 0, 0.05, 0, 0.15);
+      heartShape.bezierCurveTo(0, 0.15, 0, 0.25, 0, 0.25);
+
+      const heartGeometry = new THREE.ShapeGeometry(heartShape);
+      const heartMaterial = new THREE.MeshPhongMaterial({ 
+        color: config.color, 
+        side: THREE.DoubleSide 
+      });
+      const heart = new THREE.Mesh(heartGeometry, heartMaterial);
+      heart.position.set(config.position.x, config.position.y, config.position.z);
+
+      return heart;
+    }
+
+    // ===== LETTER CREATION =====
+    function createLetter(config) {
+      const letterGeometry = new THREE.PlaneGeometry(config.size.width, config.size.height);
+      const letterMaterial = new THREE.MeshPhongMaterial({ 
+        color: config.color, 
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0
+      });
+      const letter = new THREE.Mesh(letterGeometry, letterMaterial);
+      letter.position.set(0, 0, 0.06);
+      letter.visible = false;
+
+      return letter;
+    }
+
+    // ===== ANIMATION =====
+    function animateFlap(flap, targetRotation, duration, callback) {
+      const startRotation = flap.rotation.x;
+      const startTime = Date.now();
+
+      function animate() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = progress < 0.5 
+          ? 2 * progress * progress 
+          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+        flap.rotation.x = startRotation + (targetRotation - startRotation) * eased;
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else if (callback) {
+          callback();
+        }
+      }
+
+      animate();
+    }
+
+    //===== 3D POPUP LETTER CREATION (FOLDED IN THIRDS) =====
+    function createTextTexture(text, fontSize = 32) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      
+      // Background
+      ctx.fillStyle = '#fffef0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Text
+      ctx.fillStyle = '#333333';
+      ctx.font = `${fontSize}px Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Wrap text
+      const lines = text.split('\n');
+      const lineHeight = fontSize * 1.4;
+      const startY = (canvas.height - (lines.length * lineHeight)) / 2;
+      
+      lines.forEach((line, i) => {
+        ctx.fillText(line, canvas.width / 2, startY + (i * lineHeight));
+      });
+      
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function create3DPopupLetter() {
+        const popupGroup = new THREE.Group();
+        
+        // Paper dimensions
+        const paperWidth = 2.5;
+        const paperHeight = 3;
+        const sectionHeight = paperHeight / 3;
+        const paperDepth = 0.02;
+        
+        // Bottom section with text on material
+        const bottomGeometry = new THREE.BoxGeometry(paperWidth, sectionHeight, paperDepth);
+        const bottomTexture = createTextTexture('', 28);
+        const bottomMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xfffef0,
+            side: THREE.DoubleSide,
+            map: bottomTexture
+        });
+        const bottomSection = new THREE.Mesh(bottomGeometry, bottomMaterial);
+        bottomSection.position.set(0, 0, 0);
+        bottomSection.castShadow = true;
+        popupGroup.add(bottomSection);
+        
+        // Middle section with text on material
+        const middleGeometry = new THREE.BoxGeometry(paperWidth, sectionHeight, paperDepth);
+        const middleTexture = createTextTexture('I hope you have an amazing day,\nI love you so much!! <3\n\nYours,\nSimay', 30);
+        const middleMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xfffef0,
+            side: THREE.DoubleSide,
+            map: middleTexture
+        });
+        const middleSection = new THREE.Mesh(middleGeometry, middleMaterial);
+        middleSection.position.set(0, 0, 0.03);
+        middleSection.castShadow = true;
+        popupGroup.add(middleSection);
+        
+        // Top section with text on material
+        const topGeometry = new THREE.BoxGeometry(paperWidth, sectionHeight, paperDepth);
+        const topTexture = createTextTexture('Dear Tyler,\n\n\nHappy Birthday!', 28);
+        const topMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xfffef0,
+            side: THREE.DoubleSide,
+            map: topTexture
+        });
+        const topSection = new THREE.Mesh(topGeometry, topMaterial);
+        topSection.position.set(0, 0, 0.06);
+        topSection.castShadow = true;
+        popupGroup.add(topSection);
+        
+        // Create clipping plane
+        const clippingPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.012);
+        
+        topSection.material = topSection.material.clone();
+        topSection.material.clippingPlanes = [clippingPlane];
+        
+        bottomSection.material = bottomSection.material.clone();
+        bottomSection.material.clippingPlanes = [clippingPlane];
+        
+        // Position off-screen initially
+        popupGroup.position.set(0, 0, 0.5);
+        popupGroup.scale.set(0.1, 0.1, 0.1);
+        popupGroup.visible = false;
+        
+        // Store sections for unfolding animation
+        popupGroup.userData.sections = { top: topSection, middle: middleSection, bottom: bottomSection };
+        popupGroup.userData.clippingPlane = clippingPlane;
+        
+        return popupGroup;
+    }
+
+    function animateLetterUnfold(popup, unfold, callback) {
+        const sections = popup.userData.sections;
+        const sectionHeight = 1; // paperHeight / 3 = 3 / 3 = 1
+        const duration = 800;
+        const startTime = Date.now();
+        
+        // Starting rotations and positions
+        const topStartRotation = sections.top.rotation.x;
+        const bottomStartRotation = sections.bottom.rotation.x;
+        const topStartY = sections.top.position.y;
+        const bottomStartY = sections.bottom.position.y;
+        
+        const topTargetRotation = unfold ? -Math.PI / 1.2 : 0; // Rotate backward
+        const bottomTargetRotation = unfold ? Math.PI / 1.2 : 0; // Rotate forward
+        
+        // Also move them so they pivot from the connection point
+        const topTargetY = unfold ? sectionHeight / 2 : 0;
+        const bottomTargetY = unfold ? -sectionHeight / 2 : 0;
+
+        function animate() {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = progress < 0.5 
+            ? 2 * progress * progress 
+            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+            sections.top.rotation.x = topStartRotation + (topTargetRotation - topStartRotation) * eased;
+            sections.bottom.rotation.x = bottomStartRotation + (bottomTargetRotation - bottomStartRotation) * eased;
+            
+            sections.top.position.y = topStartY + (topTargetY - topStartY) * eased;
+            sections.bottom.position.y = bottomStartY + (bottomTargetY - bottomStartY) * eased;
+
+            // Update clipping plane to match group's world position
+            if (popup.userData.clippingPlane) {
+            const plane = popup.userData.clippingPlane;
+            const worldPos = new THREE.Vector3(0, 0, 0.012);
+            popup.localToWorld(worldPos);
+            
+            const worldNormal = new THREE.Vector3(0, 0, 1);
+            worldNormal.transformDirection(popup.matrixWorld);
+            
+            plane.setFromNormalAndCoplanarPoint(worldNormal, worldPos);
+            }
+
+            if (progress < 1) {
+            requestAnimationFrame(animate);
+            } else if (callback) {
+            callback();
+            }
+        }
+
+        animate();
+    }
+    
+    // ===== ANIMATE 3D POPUP =====
+    function animate3DPopup(popup, show, callback) {
+      const duration = 600;
+      const startTime = Date.now();
+      
+      const startZ = popup.position.z;
+      const startScale = popup.scale.x;
+      
+      const targetZ = show ? 3 : 0.5;
+      const targetScale = show ? 1 : 0.1;
+      
+      popup.visible = true;
+
+      function animate() {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = progress < 0.5 
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+          popup.position.z = startZ + (targetZ - startZ) * eased;
+          const scale = startScale + (targetScale - startScale) * eased;
+          popup.scale.set(scale, scale, scale);
+          
+          // Slight rotation for effect
+          popup.rotation.y = Math.sin(eased * Math.PI) * 0.1;
+
+          if (progress < 1) {
+          requestAnimationFrame(animate);
+          } else {
+          if (!show) popup.visible = false;
+          if (callback) callback();
+          }
+      }
+
+      animate();
+    }
+
+    // ===== MAIN INITIALIZATION =====
+    const { scene, camera, renderer, controls, composer, bloomPass } = initScene();
+    setupLighting(scene);
+
+    const base = createEnvelope(CONFIG.envelope);
+    scene.add(base);
+
+    const flap = createFlap(CONFIG);
+    base.add(flap);
+    
+    // Add emissive material to flap for glow
+    flap.material.emissive = new THREE.Color(0xff99b8);
+    flap.material.emissiveIntensity = 0.05;
+
+    const heart = createHeart(CONFIG.heart);
+    flap.add(heart);
+
+    const letter = createLetter(CONFIG.letter);
+    base.add(letter);
+
+    // Add 3D popup letter
+    const popup3DLetter = create3DPopupLetter();
+    scene.add(popup3DLetter);
+
+    // Add emissive material to envelope and heart for glow
+    base.material.emissive = new THREE.Color(0xff69b4);
+    base.material.emissiveIntensity = 0.5;
+    
+    heart.material.emissive = new THREE.Color(0xff0000);
+    heart.material.emissiveIntensity = 0.7;
+
+    // ===== INTERACTION =====
+    let letterState = 'hidden'; // 'hidden', 'closed', 'opened'
+    let isAnimating = false;
+
+    function handleTapOrClick() {
+    if (isAnimating) return;
+
+    isAnimating = true;
+
+    if (letterState === 'hidden') {
+        // First tap/click: Open envelope
+        letterState = 'closed';
+        animateFlap(flap, CONFIG.animation.flapOpenAngle, CONFIG.animation.duration, () => {
+        letter.visible = true;
+        animate3DPopup(popup3DLetter, true, () => {
+            isAnimating = false;
+        });
+        });
+    } else if (letterState === 'closed') {
+        // Second tap/click: Unfold letter
+        letterState = 'opened';
+        animateLetterUnfold(popup3DLetter, true, () => {
+        isAnimating = false;
+        });
+    } else if (letterState === 'opened') {
+        // Third tap/click: Fold and close
+        letterState = 'hidden';
+        animateLetterUnfold(popup3DLetter, false, () => {
+        animate3DPopup(popup3DLetter, false, () => {
+            letter.visible = false;
+            animateFlap(flap, CONFIG.animation.flapClosedAngle, CONFIG.animation.duration, () => {
+            isAnimating = false;
+            });
+        });
+        });
+    }
+    }
+
+    let touchHandled = false;
+    
+    window.addEventListener('touchstart', (e) => {
+      touchHandled = true;
+      handleTapOrClick();
+      // Prevent the click event from also firing
+      e.preventDefault();
+    });
+    
+    window.addEventListener('click', () => {
+      // Only handle click if touch wasn't used
+      if (!touchHandled) {
+        handleTapOrClick();
+      }
+      // Reset for next interaction
+      touchHandled = false;
+    });
+
+
+    // window.addEventListener('click', () => {
+    //   if (isAnimating) return;
+      
+    //   isAnimating = true;
+
+    //   if (letterState === 'hidden') {
+    //     // First click: Open envelope and show closed letter
+    //     letterState = 'closed';
+        
+    //     animateFlap(flap, CONFIG.animation.flapOpenAngle, CONFIG.animation.duration, () => {
+    //       letter.visible = true;
+    //       // Show 3D popup (but don't unfold yet)
+    //       animate3DPopup(popup3DLetter, true, () => {
+    //         isAnimating = false;
+    //       });
+    //     });
+        
+    //   } else if (letterState === 'closed') {
+    //     // Second click: Unfold the letter
+    //     letterState = 'opened';
+        
+    //     animateLetterUnfold(popup3DLetter, true, () => {
+    //       isAnimating = false;
+    //     });
+        
+    //   } else if (letterState === 'opened') {
+    //     // Third click: Fold letter, hide it, and close envelope
+    //     letterState = 'hidden';
+        
+    //     // Fold letter back
+    //     animateLetterUnfold(popup3DLetter, false, () => {
+    //       // Hide popup
+    //       animate3DPopup(popup3DLetter, false, () => {
+    //         letter.visible = false;
+    //         // Close envelope flap
+    //         animateFlap(flap, CONFIG.animation.flapClosedAngle, CONFIG.animation.duration, () => {
+    //           isAnimating = false;
+    //         });
+    //       });
+    //     });
+    //   }
+    // });
+
+    // ===== ANIMATION LOOP =====
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      
+      // Idle rotation and glow effect when in hidden state
+      if (letterState === 'hidden') {
+        base.rotation.y = Math.sin(Date.now() * 0.001) * 0.2;
+        base.position.y = Math.sin(Date.now() * 0.0015) * 0.1;
+        
+        // Pulse the glow intensity (subtly)
+        const pulse = 0.1 + Math.sin(Date.now() * 0.002) * 0.05;
+        base.material.emissiveIntensity = pulse;
+        heart.material.emissiveIntensity = 0.4 + Math.sin(Date.now() * 0.002) * 0.15;
+        
+        // Pulse bloom strength (subtly)
+        bloomPass.strength = 0.3 + Math.sin(Date.now() * 0.002) * 0.1;
+      }
+      
+      composer.render();
+    }
+
+    animate();
+
+    // ===== WINDOW RESIZE =====
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
