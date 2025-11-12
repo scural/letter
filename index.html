@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>💌</title>
+  <title>Special Letter</title>
   <script type="importmap">
   {
     "imports": {
@@ -63,30 +63,6 @@
   </style>
 </head>
 <body>
-
-<!-- <script>
-  const password = "111201"; // change this
-  const entered = prompt("Enter the password to view this page:");
-  if (entered !== password) {
-    document.body.innerHTML = "<h1 style='text-align:center;margin-top:40vh;'>Access Denied</h1>";
-    throw new Error("Incorrect password");
-  }
-</script> -->
-
-    <!-- <script>
-    const password = "111201"; // change this
-    const entered = prompt("Enter the password to view this page:");
-    if (entered !== password) {
-        document.body.innerHTML = "<h1 style='text-align:center;margin-top:40vh;'>Access Denied </h1>";
-    } else {
-        // Only load the 3D code if password is correct
-        const script = document.createElement("script");
-        script.type = "module";
-        script.src = "main.js"; // OR you can inline your big code below instead
-        document.body.appendChild(script);
-    }
-    </script> -->
-
 
   <script type="module">
     import * as THREE from 'three';
@@ -521,62 +497,15 @@
     window.addEventListener('touchstart', (e) => {
       touchHandled = true;
       handleTapOrClick();
-      // Prevent the click event from also firing
       e.preventDefault();
     });
     
     window.addEventListener('click', () => {
-      // Only handle click if touch wasn't used
       if (!touchHandled) {
         handleTapOrClick();
       }
-      // Reset for next interaction
       touchHandled = false;
     });
-
-
-    // window.addEventListener('click', () => {
-    //   if (isAnimating) return;
-      
-    //   isAnimating = true;
-
-    //   if (letterState === 'hidden') {
-    //     // First click: Open envelope and show closed letter
-    //     letterState = 'closed';
-        
-    //     animateFlap(flap, CONFIG.animation.flapOpenAngle, CONFIG.animation.duration, () => {
-    //       letter.visible = true;
-    //       // Show 3D popup (but don't unfold yet)
-    //       animate3DPopup(popup3DLetter, true, () => {
-    //         isAnimating = false;
-    //       });
-    //     });
-        
-    //   } else if (letterState === 'closed') {
-    //     // Second click: Unfold the letter
-    //     letterState = 'opened';
-        
-    //     animateLetterUnfold(popup3DLetter, true, () => {
-    //       isAnimating = false;
-    //     });
-        
-    //   } else if (letterState === 'opened') {
-    //     // Third click: Fold letter, hide it, and close envelope
-    //     letterState = 'hidden';
-        
-    //     // Fold letter back
-    //     animateLetterUnfold(popup3DLetter, false, () => {
-    //       // Hide popup
-    //       animate3DPopup(popup3DLetter, false, () => {
-    //         letter.visible = false;
-    //         // Close envelope flap
-    //         animateFlap(flap, CONFIG.animation.flapClosedAngle, CONFIG.animation.duration, () => {
-    //           isAnimating = false;
-    //         });
-    //       });
-    //     });
-    //   }
-    // });
 
     // ===== ANIMATION LOOP =====
     function animate() {
